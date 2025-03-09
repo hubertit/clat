@@ -26,6 +26,9 @@ import java.util.HashMap;
 public class UserController {
 
     @Autowired
+    private JwtUtil jwtUtil; // ✅ Ensure JwtUtil is injected
+
+    @Autowired
     private UserService userService;
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody UserDTO userDTO) {
@@ -69,16 +72,34 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<User>> loginUser(@RequestBody LoginDTO loginDTO) {
-        Optional<User> user = userService.findByEmail(loginDTO.getEmail());
+    public ResponseEntity<ApiResponse<Map<String, Object>>> loginUser(@RequestBody LoginDTO loginDTO) {
+        Optional<User> userOptional = userService.findByEmail(loginDTO.getEmail());
 
-        if (user.isEmpty() || !userService.verifyPassword(loginDTO.getPassword(), user.get().getPassword())) {
+        if (userOptional.isEmpty() || !userService.verifyPassword(loginDTO.getPassword(), userOptional.get().getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.error(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
         }
 
-        return ResponseEntity.ok(ApiResponse.success("Login successful", user.get()));
+        User user = userOptional.get();
+
+        // ✅ Generate JWT token
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        // ✅ Prepare response data
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("phone", user.getPhone());
+        response.put("email", user.getEmail());
+        response.put("name", user.getName());
+        response.put("role", user.getRole());
+        response.put("password", user.getPassword());
+        response.put("status", user.getStatus());
+        response.put("createdAt", user.getCreatedAt());
+        response.put("token", token); // ✅ Add JWT token to response
+
+        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
+
 
     @GetMapping("/")
     public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {

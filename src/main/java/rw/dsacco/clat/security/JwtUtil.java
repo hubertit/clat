@@ -6,15 +6,17 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
+
 import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
 
-@Component // ✅ Ensure this annotation is here
+@Component
 public class JwtUtil {
-    private static final String SECRET_KEY = "your-secure-base64-secret-key"; // Ensure this is a long enough key
 
-    private Key getSigningKey() {
+    private static final String SECRET_KEY = "GJ0sX9YyT6rCpz1NdJ3qFtkT9NfO3ZojapL9zpKXf7Q="; // 🔹 Use generated 256-bit key
+
+    private Key getSignKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
@@ -23,8 +25,21 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24h expiry
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours validity
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claimsResolver.apply(claims);
     }
 }
