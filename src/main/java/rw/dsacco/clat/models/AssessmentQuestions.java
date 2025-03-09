@@ -37,11 +37,14 @@ public class AssessmentQuestions {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // Auto-generate code before saving
+    @Builder.Default // ✅ Fixes the warning for default values in `@Builder`
+    @Column(nullable = false)
+    private boolean isMultipleChoice = false;
+
     @PrePersist
     public void generateCode() {
         if (this.code == null) {
-            this.code = "Q-" + (100000 + new Random().nextInt(900000)); // Generates Q-XXXXXX
+            this.code = "Q-" + (100000 + new Random().nextInt(900000));
         }
     }
 }

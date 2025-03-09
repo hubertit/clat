@@ -21,12 +21,15 @@ public class AssessmentQuestionsService {
 
     public AssessmentQuestions createQuestion(AssessmentQuestions question, String activityCode) {
         Optional<Activities> activityOptional = activitiesRepository.findByCode(activityCode);
+
         if (activityOptional.isEmpty()) {
-            throw new RuntimeException("Activity not found");
+            throw new IllegalArgumentException("Activity with code " + activityCode + " not found.");
         }
+
         question.setActivity(activityOptional.get());
         return questionsRepository.save(question);
     }
+
 
     public List<AssessmentQuestions> getAllQuestions() {
         return questionsRepository.findAll();
@@ -42,6 +45,10 @@ public class AssessmentQuestionsService {
 
     public List<AssessmentQuestions> searchQuestions(String keyword) {
         return questionsRepository.searchQuestions(keyword);
+    }
+
+    public AssessmentQuestions updateQuestion(AssessmentQuestions question) {
+        return questionsRepository.save(question);
     }
 
     public void deleteQuestion(Long id) {
