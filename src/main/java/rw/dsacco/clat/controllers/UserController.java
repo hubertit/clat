@@ -29,6 +29,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    // ✅ Register User
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<User>> registerUser(@RequestBody UserDTO userDTO) {
         if (userService.existsByEmailOrPhone(userDTO.getEmail(), userDTO.getPhone())) {
@@ -49,6 +50,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("User registered successfully", savedUser));
     }
 
+    // ✅ User Login
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<Map<String, Object>>> loginUser(@RequestBody LoginDTO loginDTO) {
         Optional<User> user = userService.findByEmail(loginDTO.getEmail());
@@ -60,8 +62,6 @@ public class UserController {
 
         // ✅ Generate JWT token
         String token = jwtUtil.generateToken(user.get().getEmail(), user.get().getId());
-
-
 
         // ✅ Prepare response data
         Map<String, Object> response = new HashMap<>();
@@ -75,5 +75,49 @@ public class UserController {
         response.put("token", token);
 
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    // ✅ Get All Users
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
+        List<User> users = userService.getAllUsers();
+        if (users.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(HttpStatus.NOT_FOUND, "No users found"));
+        }
+        return ResponseEntity.ok(ApiResponse.success("Fetched all users", users));
+    }
+
+    // ✅ Update User
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<User>> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserDTO userDTO) {
+
+        Optional<User> existingUserOpt = userService.findById(id);
+        if (existingUserOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(HttpStatus.NOT_FOUND, "User not found"));
+        }
+
+        User existingUser = existingUserOpt.get();
+        existingUser.setName(userDTO.getName());
+        existingUser.setPhone(userDTO.getPhone());
+        existingUser.setEmail(userDTO.getEmail());
+        existingUser.setRole(Role.valueOf(userDTO.getRole().toUpperCase()));
+        existingUser.setStatus(userDTO.getStatus());
+
+        User updatedUser = userService.saveUser(existingUser);
+        return ResponseEntity.ok(ApiResponse.success("User updated successfully", updatedUser));
+    }
+
+    // ✅ Delete User
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable Long id) {
+        if (!userService.deleteUser(id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(HttpStatus.NOT_FOUND, "User not found"));
+        }
+        return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
     }
 }

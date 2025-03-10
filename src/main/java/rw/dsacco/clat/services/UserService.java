@@ -16,24 +16,31 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // 🔐 Password encoder
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // 🔐 Secure password storage
 
+    // ✅ Find User by Email
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
 
+    // ✅ Find User by Phone
     public Optional<User> findByPhone(String phone) {
         return userRepository.findByPhone(phone);
     }
 
+    // ✅ Create or Save User
     public User saveUser(User user) {
         System.out.println("🔍 Before Saving: " + user);
 
         // Encrypt the password before saving
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (user.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
 
         // Ensure createdAt is not null
-        user.setCreatedAt(LocalDateTime.now().toString());
+        if (user.getCreatedAt() == null) {
+            user.setCreatedAt(LocalDateTime.now().toString());
+        }
 
         try {
             User savedUser = userRepository.save(user);
@@ -45,26 +52,17 @@ public class UserService {
         }
     }
 
-    public void deleteUser(User user) {
-        userRepository.delete(user);
-    }
-
-    public boolean existsByEmailOrPhone(String email, String phone) {
-        return userRepository.existsByEmail(email) || userRepository.existsByPhone(phone);
-    }
-
-    public boolean verifyPassword(String rawPassword, String encryptedPassword) {
-        return passwordEncoder.matches(rawPassword, encryptedPassword);
-    }
-
+    // ✅ Get All Users
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    // ✅ Find User by ID
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
 
+    // ✅ Update User
     public User updateUser(User user) {
         try {
             System.out.println("🔄 Updating User in Database: " + user);
@@ -78,11 +76,22 @@ public class UserService {
         }
     }
 
-
-
-    public void deleteUser(Long id) {
+    // ✅ Delete User by ID
+    public boolean deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            return false; // User not found
+        }
         userRepository.deleteById(id);
+        return true;
     }
 
+    // ✅ Check if Email or Phone Exists
+    public boolean existsByEmailOrPhone(String email, String phone) {
+        return userRepository.existsByEmail(email) || userRepository.existsByPhone(phone);
+    }
 
+    // ✅ Verify Password (Hashed)
+    public boolean verifyPassword(String rawPassword, String encryptedPassword) {
+        return passwordEncoder.matches(rawPassword, encryptedPassword);
+    }
 }
