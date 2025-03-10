@@ -1,18 +1,14 @@
 package rw.dsacco.clat.controllers;
 
 import rw.dsacco.clat.dto.*;
-import rw.dsacco.clat.models.Assessment;
 import rw.dsacco.clat.services.AssessmentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-import java.util.UUID;
-import java.util.List;
 import java.math.BigDecimal;
-
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/assessments")
@@ -23,56 +19,58 @@ public class AssessmentController {
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<AssessmentResponseDTO>> createAssessment(@RequestBody AssessmentDTO dto) {
-        try {
-            Assessment assessment = assessmentService.createAssessment(dto);
-            return ResponseEntity.ok(ApiResponse.success("Assessment created successfully", assessmentService.convertToDTO(assessment)));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ApiResponse.error(HttpStatus.BAD_REQUEST, e.getMessage()));
-        }
+        return ResponseEntity.ok(assessmentService.createOrUpdateAssessment(dto));
+    }
+
+    @PutMapping("/{code}") // ✅ PUT for updating assessments
+    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> updateAssessment(
+            @PathVariable UUID code, @RequestBody AssessmentDTO dto) {
+        return ResponseEntity.ok(assessmentService.createOrUpdateAssessment(dto));
     }
 
     @GetMapping("/{code}")
     public ResponseEntity<ApiResponse<AssessmentResponseDTO>> getAssessment(@PathVariable UUID code) {
-        Optional<AssessmentResponseDTO> assessment = assessmentService.getAssessmentByCode(code);
-        return assessment.map(a -> ResponseEntity.ok(ApiResponse.success("Assessment found", a)))
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error(HttpStatus.NOT_FOUND, "Assessment not found")));
+        return ResponseEntity.ok(assessmentService.getAssessmentByCode(code));
     }
 
     @DeleteMapping("/{code}")
-    public ResponseEntity<ApiResponse<Void>> deleteAssessment(@PathVariable UUID code) {
-        assessmentService.deleteAssessment(code);
-        return ResponseEntity.ok(ApiResponse.success("Assessment deleted successfully", null));
-    }
-
-
-    @PutMapping("/{code}")
-    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> updateAssessment(
-            @PathVariable UUID code, @RequestBody AssessmentDTO dto) {
-
-        Optional<Assessment> existingAssessment = assessmentService.getAssessmentByUUID(code);
-        if (existingAssessment.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error(HttpStatus.NOT_FOUND, "Assessment not found"));
-        }
-
-        Assessment updatedAssessment = assessmentService.updateAssessment(existingAssessment.get(), dto);
-        return ResponseEntity.ok(ApiResponse.success("Assessment updated successfully",
-                assessmentService.convertToDTO(updatedAssessment)));
+    public ResponseEntity<ApiResponse<String>> deleteAssessment(@PathVariable UUID code) {
+        return ResponseEntity.ok(assessmentService.deleteAssessment(code));
     }
 
     @GetMapping("/")
     public ResponseEntity<ApiResponse<List<AssessmentResponseDTO>>> getAllAssessments() {
-        List<AssessmentResponseDTO> assessments = assessmentService.getAllAssessments()
-                .stream().map(assessmentService::convertToDTO).toList();
+        return ResponseEntity.ok(assessmentService.getAllAssessments());
+    }
 
-        return ResponseEntity.ok(ApiResponse.success("Assessments retrieved successfully", assessments));
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<AssessmentResponseDTO>>> searchAssessments(@RequestParam String keyword) {
+        return ResponseEntity.ok(assessmentService.searchAssessments(keyword));
+    }
+
+    // ✅ Status Update APIs
+    @PutMapping("/{code}/approve")
+    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> approveAssessment(@PathVariable UUID code) {
+        return ResponseEntity.ok(assessmentService.approveAssessment(code));
+    }
+
+    @PutMapping("/{code}/reject")
+    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> rejectAssessment(@PathVariable UUID code) {
+        return ResponseEntity.ok(assessmentService.rejectAssessment(code));
+    }
+
+    @PutMapping("/{code}/processing")
+    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> markProcessing(@PathVariable UUID code) {
+        return ResponseEntity.ok(assessmentService.markProcessing(code));
+    }
+
+    @PutMapping("/{code}/submit")
+    public ResponseEntity<ApiResponse<AssessmentResponseDTO>> submitAssessment(@PathVariable UUID code) {
+        return ResponseEntity.ok(assessmentService.submitAssessment(code));
     }
 
     @GetMapping("/filter")
     public ResponseEntity<ApiResponse<List<AssessmentResponseDTO>>> filterAssessments(
-            @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String loanApplicationNo,
@@ -83,14 +81,7 @@ public class AssessmentController {
             @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String sortOrder) {
 
-        List<AssessmentResponseDTO> assessments = assessmentService.filterAssessments(
-                        customerId, productId, status, loanApplicationNo, minLoanAmount, maxLoanAmount,
-                        startDate, endDate, sortBy, sortOrder)
-                .stream().map(assessmentService::convertToDTO).toList();
-
-        return ResponseEntity.ok(ApiResponse.success("Filtered assessments retrieved successfully", assessments));
+        return ResponseEntity.ok(assessmentService.filterAssessments(
+                productId, status, loanApplicationNo, minLoanAmount, maxLoanAmount, startDate, endDate, sortBy, sortOrder));
     }
-
-
-
 }

@@ -24,12 +24,8 @@ public class Assessment {
     @Column(nullable = false, unique = true, updatable = false)
     private UUID code = UUID.randomUUID();
 
-    @Column(name = "product_id") // ✅ No longer a foreign key
-    private Long productId; // ✅ Changed from Product object to Long
-
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User customer;
+    @Column(name = "product_id", nullable = false)
+    private Long productId;
 
     @Column(nullable = false, unique = true)
     private String loanApplicationNo;
@@ -37,22 +33,26 @@ public class Assessment {
     @Column(nullable = false)
     private BigDecimal loanApplicationAmount;
 
-    @ManyToOne
-    @JoinColumn(name = "done_by")
-    private User doneBy;
-
-    @ManyToOne
-    @JoinColumn(name = "approved_by")
-    private User approvedBy;
-
-    @Builder.Default
     @Column(nullable = false)
-    private String status = "PENDING";
+    private String status;
+
+    @Column(nullable = true)
+    private Long saccoId;
+
+    @Column(nullable = true)
+    private Double progress;
+
+    @Column(nullable = true)
+    private BigDecimal totalCost;
+
+    @Column(nullable = true)
+    private BigDecimal greenCost;
+
+    @Column(nullable = true)
+    private BigDecimal nonGreenCost;
 
     @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column
-    private LocalDateTime updatedAt;
 }

@@ -1,160 +1,183 @@
 package rw.dsacco.clat.services;
 
+import rw.dsacco.clat.dto.ApiResponse;
 import rw.dsacco.clat.dto.AssessmentDTO;
 import rw.dsacco.clat.dto.AssessmentResponseDTO;
-import rw.dsacco.clat.models.*;
-import rw.dsacco.clat.repositories.*;
+import rw.dsacco.clat.models.Assessment;
+import rw.dsacco.clat.repositories.AssessmentRepository;
+import rw.dsacco.clat.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.time.LocalDateTime;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.math.BigDecimal;
-
-
+import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import jakarta.transaction.Transactional;
 
 @Service
 public class AssessmentService {
-
-    private static final Logger logger = LoggerFactory.getLogger(AssessmentService.class);
 
     @Autowired
     private AssessmentRepository assessmentRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private ProductRepository productRepository;
 
-    @Autowired
-    private ProductRepository productRepository; // ✅ Ensure this is present
-
-
-    public Assessment createAssessment(AssessmentDTO dto) {
-        logger.info("Received Assessment Request: {}", dto);
-
-        Optional<User> customer = userRepository.findById(dto.getCustomerId());
-
-        if (customer.isEmpty()) {
-            throw new IllegalArgumentException("Customer ID not found: " + dto.getCustomerId());
+    public ApiResponse<AssessmentResponseDTO> createOrUpdateAssessment(AssessmentDTO dto) {
+        // ✅ Check for missing required fields
+        if (dto.getProductId() == null) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: productId");
+        }
+        if (dto.getLoanApplicationNo() == null || dto.getLoanApplicationNo().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: loanApplicationNo");
+        }
+        if (dto.getLoanApplicationAmount() == null) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: loanApplicationAmount");
+        }
+        if (dto.getStatus() == null || dto.getStatus().isEmpty()) {
+            return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: status");
         }
 
-        logger.info("Product ID: {}", dto.getProductId()); // ✅ Debugging log
+        Optional<Assessment> existingAssessment = assessmentRepository.findByLoanApplicationNo(dto.getLoanApplicationNo());
 
-        Assessment assessment = Assessment.builder()
-                .code(UUID.randomUUID())
-                .customer(customer.get())
-                .productId(dto.getProductId()) // ✅ Directly storing productId
-                .loanApplicationNo(dto.getLoanApplicationNo())
-                .loanApplicationAmount(dto.getLoanApplicationAmount())
-                .doneBy(null)
-                .status("PENDING")
-                .build();
+        Assessment assessment;
+        boolean isUpdate = false;
 
-        try {
-            Assessment savedAssessment = assessmentRepository.save(assessment);
-            logger.info("Assessment created successfully: {}", savedAssessment);
-            return savedAssessment;
-        } catch (Exception e) {
-            logger.error("Error saving assessment: ", e);
-            throw new RuntimeException("Failed to create assessment: " + e.getMessage());
+        if (existingAssessment.isPresent()) {
+            assessment = existingAssessment.get();
+            isUpdate = true;
+        } else {
+            assessment = new Assessment();
+            assessment.setCode(UUID.randomUUID()); // ✅ Ensure UUID is correctly generated
+            assessment.setCreatedAt(LocalDateTime.now());
         }
+
+        // ✅ Preserve existing values if DTO values are null
+        if (dto.getProductId() != null) assessment.setProductId(dto.getProductId());
+        if (dto.getLoanApplicationAmount() != null) assessment.setLoanApplicationAmount(dto.getLoanApplicationAmount());
+        if (dto.getStatus() != null) assessment.setStatus(dto.getStatus());
+        if (dto.getLoanApplicationNo() != null) assessment.setLoanApplicationNo(dto.getLoanApplicationNo());
+        if (dto.getSaccoId() != null) assessment.setSaccoId(dto.getSaccoId());
+        if (dto.getProgress() != null) assessment.setProgress(dto.getProgress());
+        if (dto.getTotalCost() != null) assessment.setTotalCost(dto.getTotalCost());
+        if (dto.getGreenCost() != null) assessment.setGreenCost(dto.getGreenCost());
+        if (dto.getNonGreenCost() != null) assessment.setNonGreenCost(dto.getNonGreenCost());
+
+        assessmentRepository.save(assessment);
+        return ApiResponse.success(isUpdate ? "Assessment updated successfully" : "Assessment created successfully", convertToDTO(assessment));
     }
 
-    public Optional<AssessmentResponseDTO> getAssessmentByCode(UUID code) {
-        return assessmentRepository.findByCode(code).map(this::convertToDTO);
+    public ApiResponse<List<AssessmentResponseDTO>> getAllAssessments() {
+        List<AssessmentResponseDTO> assessments = assessmentRepository.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        if (assessments.isEmpty()) {
+            throw new NoSuchElementException("No assessments found.");
+        }
+        return ApiResponse.success("Fetched all assessments", assessments);
     }
 
-    public void deleteAssessment(UUID code) {
+    public ApiResponse<AssessmentResponseDTO> getAssessmentByCode(UUID code) {
+        return assessmentRepository.findByCode(code)
+                .map(a -> ApiResponse.success("Assessment found", convertToDTO(a)))
+                .orElseThrow(() -> new NoSuchElementException("Assessment not found with code: " + code));
+    }
+
+    @Transactional
+    public ApiResponse<String> deleteAssessment(UUID code) {
+        if (!assessmentRepository.existsByCode(code)) {
+            throw new NoSuchElementException("Assessment not found with code: " + code);
+        }
         assessmentRepository.deleteByCode(code);
+        return ApiResponse.success("Assessment deleted successfully", null);
     }
 
-    public AssessmentResponseDTO convertToDTO(Assessment assessment) {
-        // Fetch product name using `productId`
-        String productName = null;
-        if (assessment.getProductId() != null) {
-            Optional<Product> product = productRepository.findById(assessment.getProductId());
-            productName = product.map(Product::getEnProduct).orElse("Unknown Product");
+    public ApiResponse<List<AssessmentResponseDTO>> searchAssessments(String keyword) {
+        List<AssessmentResponseDTO> results = assessmentRepository.findAll().stream()
+                .filter(a -> a.getLoanApplicationNo().contains(keyword))
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        if (results.isEmpty()) {
+            throw new NoSuchElementException("No assessments found matching keyword: " + keyword);
         }
-
-        // Fetch doneBy name
-        String doneByName = (assessment.getDoneBy() != null) ? assessment.getDoneBy().getName() : null;
-
-        return new AssessmentResponseDTO(
-                assessment.getCode(),
-                assessment.getCustomer().getName(),
-                productName,
-                assessment.getLoanApplicationNo(),
-                assessment.getLoanApplicationAmount(),
-                doneByName,
-                (assessment.getApprovedBy() != null) ? assessment.getApprovedBy().getName() : null,
-                assessment.getStatus(),
-                assessment.getCreatedAt(),
-                assessment.getUpdatedAt()
-        );
+        return ApiResponse.success("Search results", results);
     }
 
-    public Optional<Assessment> getAssessmentByUUID(UUID code) {
-        return assessmentRepository.findByCode(code);
+    public ApiResponse<AssessmentResponseDTO> approveAssessment(UUID code) {
+        return updateStatus(code, "APPROVED");
     }
 
+    public ApiResponse<AssessmentResponseDTO> rejectAssessment(UUID code) {
+        return updateStatus(code, "REJECTED");
+    }
 
-    public Assessment updateAssessment(Assessment assessment, AssessmentDTO dto) {
-        if (dto.getLoanApplicationAmount() != null) {
-            assessment.setLoanApplicationAmount(dto.getLoanApplicationAmount());
+    public ApiResponse<AssessmentResponseDTO> markProcessing(UUID code) {
+        return updateStatus(code, "PROCESSING");
+    }
+
+    public ApiResponse<AssessmentResponseDTO> submitAssessment(UUID code) {
+        return updateStatus(code, "SUBMITTED");
+    }
+
+    private ApiResponse<AssessmentResponseDTO> updateStatus(UUID code, String status) {
+        Optional<Assessment> assessment = assessmentRepository.findByCode(code);
+        if (assessment.isEmpty()) {
+            throw new NoSuchElementException("Assessment not found with code: " + code);
         }
-        if (dto.getStatus() != null) {
-            assessment.setStatus(dto.getStatus());
-        }
-
-        assessment.setUpdatedAt(LocalDateTime.now());
-
-        return assessmentRepository.save(assessment);
+        Assessment a = assessment.get();
+        a.setStatus(status);
+        assessmentRepository.save(a);
+        return ApiResponse.success("Assessment updated to " + status, convertToDTO(a));
     }
 
-    public List<Assessment> getAllAssessments() {
-        return assessmentRepository.findAll();
-    }
-
-    public List<Assessment> filterAssessments(
-            Long customerId, Long productId, String status, String loanApplicationNo,
+    public ApiResponse<List<AssessmentResponseDTO>> filterAssessments(
+            Long productId, String status, String loanApplicationNo,
             BigDecimal minLoanAmount, BigDecimal maxLoanAmount,
             String startDate, String endDate, String sortBy, String sortOrder) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime startDateTime = (startDate != null) ? LocalDateTime.parse(startDate, formatter) : null;
-        LocalDateTime endDateTime = (endDate != null) ? LocalDateTime.parse(endDate, formatter) : null;
-
-        List<Assessment> filteredAssessments = assessmentRepository.findAll().stream()
-                .filter(a -> (customerId == null || a.getCustomer().getId().equals(customerId)))
+        List<AssessmentResponseDTO> assessments = assessmentRepository.findAll()
+                .stream()
                 .filter(a -> (productId == null || a.getProductId().equals(productId)))
                 .filter(a -> (status == null || a.getStatus().equalsIgnoreCase(status)))
                 .filter(a -> (loanApplicationNo == null || a.getLoanApplicationNo().equalsIgnoreCase(loanApplicationNo)))
                 .filter(a -> (minLoanAmount == null || a.getLoanApplicationAmount().compareTo(minLoanAmount) >= 0))
                 .filter(a -> (maxLoanAmount == null || a.getLoanApplicationAmount().compareTo(maxLoanAmount) <= 0))
-                .filter(a -> (startDateTime == null || a.getCreatedAt().isAfter(startDateTime)))
-                .filter(a -> (endDateTime == null || a.getCreatedAt().isBefore(endDateTime)))
-                .toList();
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
 
-        // Sorting logic
-        Comparator<Assessment> comparator = switch (sortBy.toLowerCase()) {
-            case "updatedat" -> Comparator.comparing(Assessment::getUpdatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-            case "loanapplicationamount" -> Comparator.comparing(Assessment::getLoanApplicationAmount);
-            case "status" -> Comparator.comparing(Assessment::getStatus);
-            default -> Comparator.comparing(Assessment::getCreatedAt);
-        };
-
-        // Apply sorting order
-        if ("desc".equalsIgnoreCase(sortOrder)) {
-            comparator = comparator.reversed();
+        if (assessments.isEmpty()) {
+            throw new NoSuchElementException("No assessments found for the given filters.");
         }
 
-        return filteredAssessments.stream().sorted(comparator).toList();
+        return ApiResponse.success("Filtered assessments retrieved successfully", assessments);
     }
 
+    private AssessmentResponseDTO convertToDTO(Assessment assessment) {
+        String productName = productRepository.findById(assessment.getProductId())
+                .map(p -> p.getEnProduct())
+                .orElse("Unknown Product");
+
+        return new AssessmentResponseDTO(
+                assessment.getId(),
+                assessment.getCode(),
+                productName,
+                assessment.getLoanApplicationNo(),
+                assessment.getLoanApplicationAmount(),
+                assessment.getStatus(),
+                assessment.getCreatedAt(),
+                assessment.getSaccoId(),
+                assessment.getProgress(),
+                assessment.getTotalCost(),
+                assessment.getGreenCost(),
+                assessment.getNonGreenCost()
+        );
+    }
 }
