@@ -72,7 +72,7 @@ public class UserController {
         response.put("role", user.get().getRole());
         response.put("status", user.get().getStatus());
         response.put("createdAt", user.get().getCreatedAt());
-        response.put("token", token); // ✅ Add JWT token
+        response.put("token", token);
 
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
