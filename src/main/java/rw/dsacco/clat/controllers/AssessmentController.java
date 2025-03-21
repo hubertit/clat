@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+@CrossOrigin(origins = "http://localhost:4200") // Allow frontend access
 @RestController
 @RequestMapping("/api/assessments")
 public class AssessmentController {

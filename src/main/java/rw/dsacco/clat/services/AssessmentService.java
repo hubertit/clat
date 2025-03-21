@@ -29,7 +29,6 @@ public class AssessmentService {
     private ProductRepository productRepository;
 
     public ApiResponse<AssessmentResponseDTO> createOrUpdateAssessment(AssessmentDTO dto) {
-        // ✅ Check for missing required fields
         if (dto.getProductId() == null) {
             return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: productId");
         }
@@ -53,11 +52,10 @@ public class AssessmentService {
             isUpdate = true;
         } else {
             assessment = new Assessment();
-            assessment.setCode(UUID.randomUUID()); // ✅ Ensure UUID is correctly generated
+            assessment.setCode(UUID.randomUUID());
             assessment.setCreatedAt(LocalDateTime.now());
         }
 
-        // ✅ Preserve existing values if DTO values are null
         if (dto.getProductId() != null) assessment.setProductId(dto.getProductId());
         if (dto.getLoanApplicationAmount() != null) assessment.setLoanApplicationAmount(dto.getLoanApplicationAmount());
         if (dto.getStatus() != null) assessment.setStatus(dto.getStatus());
@@ -73,7 +71,7 @@ public class AssessmentService {
     }
 
     public ApiResponse<List<AssessmentResponseDTO>> getAllAssessments() {
-        List<AssessmentResponseDTO> assessments = assessmentRepository.findAll()
+        List<AssessmentResponseDTO> assessments = assessmentRepository.findAllByOrderByIdDesc()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

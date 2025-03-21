@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
+@CrossOrigin(origins = "http://localhost:4200") // Allow frontend access
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

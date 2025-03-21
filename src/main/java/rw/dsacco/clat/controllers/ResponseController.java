@@ -9,6 +9,7 @@ import rw.dsacco.clat.services.ResponseService;
 
 import java.util.List;
 
+@CrossOrigin(origins = "http://localhost:4200") // Allow frontend access
 @RestController
 @RequestMapping("/api/responses") // ✅ New API path
 public class ResponseController {
