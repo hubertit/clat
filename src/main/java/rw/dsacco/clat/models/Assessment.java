@@ -51,8 +51,13 @@ public class Assessment {
     @Column(nullable = true)
     private BigDecimal nonGreenCost;
 
+    @Column(nullable = true)
+    private String customerName; // ✅ New
+
+    @Column(nullable = true)
+    private String customerGender; // ✅ New
+
     @Builder.Default
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
 }

@@ -65,6 +65,8 @@ public class AssessmentService {
         if (dto.getTotalCost() != null) assessment.setTotalCost(dto.getTotalCost());
         if (dto.getGreenCost() != null) assessment.setGreenCost(dto.getGreenCost());
         if (dto.getNonGreenCost() != null) assessment.setNonGreenCost(dto.getNonGreenCost());
+        if (dto.getCustomerName() != null) assessment.setCustomerName(dto.getCustomerName());
+        if (dto.getCustomerGender() != null) assessment.setCustomerGender(dto.getCustomerGender());
 
         assessmentRepository.save(assessment);
         return ApiResponse.success(isUpdate ? "Assessment updated successfully" : "Assessment created successfully", convertToDTO(assessment));
@@ -163,19 +165,22 @@ public class AssessmentService {
                 .map(p -> p.getEnProduct())
                 .orElse("Unknown Product");
 
-        return new AssessmentResponseDTO(
-                assessment.getId(),
-                assessment.getCode(),
-                productName,
-                assessment.getLoanApplicationNo(),
-                assessment.getLoanApplicationAmount(),
-                assessment.getStatus(),
-                assessment.getCreatedAt(),
-                assessment.getSaccoId(),
-                assessment.getProgress(),
-                assessment.getTotalCost(),
-                assessment.getGreenCost(),
-                assessment.getNonGreenCost()
-        );
+        AssessmentResponseDTO dto = new AssessmentResponseDTO();
+        dto.setId(assessment.getId());
+        dto.setSaccoId(assessment.getSaccoId());
+        dto.setCode(assessment.getCode());
+        dto.setProductName(productName);
+        dto.setLoanApplicationNo(assessment.getLoanApplicationNo());
+        dto.setLoanApplicationAmount(assessment.getLoanApplicationAmount());
+        dto.setCustomerName(assessment.getCustomerName());
+        dto.setCustomerGender(assessment.getCustomerGender());
+        dto.setProgress(assessment.getProgress());
+        dto.setTotalCost(assessment.getTotalCost());
+        dto.setGreenCost(assessment.getGreenCost());
+        dto.setNonGreenCost(assessment.getNonGreenCost());
+        dto.setStatus(assessment.getStatus());
+        dto.setCreatedAt(assessment.getCreatedAt());
+
+        return dto;
     }
 }

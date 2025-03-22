@@ -17,4 +17,6 @@ public class AssessmentDTO {
     private BigDecimal totalCost;    // ✅ Nullable
     private BigDecimal greenCost;    // ✅ Nullable
     private BigDecimal nonGreenCost; // ✅ Nullable
+    private String customerName;     // ✅ New
+    private String customerGender;   // ✅ New
 }
