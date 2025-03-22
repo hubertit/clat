@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -18,11 +19,12 @@ public class AssessmentResponseDTO {
     private BigDecimal loanApplicationAmount;
     private String status;
     private LocalDateTime createdAt;
-    private Long saccoId;            // ✅ Nullable
-    private Double progress;         // ✅ Nullable
-    private BigDecimal totalCost;    // ✅ Nullable
-    private BigDecimal greenCost;    // ✅ Nullable
-    private BigDecimal nonGreenCost; // ✅ Nullabl
-    private String customerName;     // ✅ New
-    private String customerGender;   // ✅ New
+    private Long saccoId;
+    private Double progress;
+    private BigDecimal totalCost;
+    private BigDecimal greenCost;
+    private BigDecimal nonGreenCost;
+    private String customerName;
+    private String customerGender;
+    private List<AnsweredQuestionDTO> questions;
 }

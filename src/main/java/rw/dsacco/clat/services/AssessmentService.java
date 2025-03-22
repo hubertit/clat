@@ -1,11 +1,9 @@
 package rw.dsacco.clat.services;
 
-import rw.dsacco.clat.dto.ApiResponse;
-import rw.dsacco.clat.dto.AssessmentDTO;
-import rw.dsacco.clat.dto.AssessmentResponseDTO;
-import rw.dsacco.clat.models.Assessment;
-import rw.dsacco.clat.repositories.AssessmentRepository;
-import rw.dsacco.clat.repositories.ProductRepository;
+import rw.dsacco.clat.dto.*;
+import rw.dsacco.clat.models.*;
+import rw.dsacco.clat.repositories.*;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,6 +25,12 @@ public class AssessmentService {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private AssessmentResponsesRepository assessmentResponsesRepository;
+
+    @Autowired
+    private AssessmentQuestionsRepository assessmentQuestionsRepository;
 
     public ApiResponse<AssessmentResponseDTO> createOrUpdateAssessment(AssessmentDTO dto) {
         if (dto.getProductId() == null) {
@@ -56,17 +60,17 @@ public class AssessmentService {
             assessment.setCreatedAt(LocalDateTime.now());
         }
 
-        if (dto.getProductId() != null) assessment.setProductId(dto.getProductId());
-        if (dto.getLoanApplicationAmount() != null) assessment.setLoanApplicationAmount(dto.getLoanApplicationAmount());
-        if (dto.getStatus() != null) assessment.setStatus(dto.getStatus());
-        if (dto.getLoanApplicationNo() != null) assessment.setLoanApplicationNo(dto.getLoanApplicationNo());
-        if (dto.getSaccoId() != null) assessment.setSaccoId(dto.getSaccoId());
-        if (dto.getProgress() != null) assessment.setProgress(dto.getProgress());
-        if (dto.getTotalCost() != null) assessment.setTotalCost(dto.getTotalCost());
-        if (dto.getGreenCost() != null) assessment.setGreenCost(dto.getGreenCost());
-        if (dto.getNonGreenCost() != null) assessment.setNonGreenCost(dto.getNonGreenCost());
-        if (dto.getCustomerName() != null) assessment.setCustomerName(dto.getCustomerName());
-        if (dto.getCustomerGender() != null) assessment.setCustomerGender(dto.getCustomerGender());
+        assessment.setProductId(dto.getProductId());
+        assessment.setLoanApplicationAmount(dto.getLoanApplicationAmount());
+        assessment.setStatus(dto.getStatus());
+        assessment.setLoanApplicationNo(dto.getLoanApplicationNo());
+        assessment.setSaccoId(dto.getSaccoId());
+        assessment.setProgress(dto.getProgress());
+        assessment.setTotalCost(dto.getTotalCost());
+        assessment.setGreenCost(dto.getGreenCost());
+        assessment.setNonGreenCost(dto.getNonGreenCost());
+        assessment.setCustomerName(dto.getCustomerName());
+        assessment.setCustomerGender(dto.getCustomerGender());
 
         assessmentRepository.save(assessment);
         return ApiResponse.success(isUpdate ? "Assessment updated successfully" : "Assessment created successfully", convertToDTO(assessment));
@@ -181,6 +185,30 @@ public class AssessmentService {
         dto.setStatus(assessment.getStatus());
         dto.setCreatedAt(assessment.getCreatedAt());
 
+        dto.setQuestions(fetchAnsweredQuestions(assessment.getId()));
         return dto;
+    }
+
+    private List<AnsweredQuestionDTO> fetchAnsweredQuestions(Long assessmentId) {
+        return assessmentResponsesRepository.findByAssessmentId(assessmentId).stream()
+                .map(response -> {
+                    AssessmentQuestions question = assessmentQuestionsRepository
+                            .findById(response.getQuestionId())
+                            .orElse(null);
+                    if (question == null) return null;
+
+                    AnsweredQuestionDTO dto = new AnsweredQuestionDTO();
+                    dto.setQuestionCode(question.getCode());
+                    dto.setEnQuestion(question.getEnQuestion());
+                    dto.setFrQuestion(question.getFrQuestion());
+                    dto.setKnQuestion(question.getKnQuestion());
+                    dto.setDescription(question.getDescription());
+                    dto.setOptionId(response.getOptionId());
+                    dto.setCost(response.getCost());
+                    dto.setIsGreen(response.getIsGreen());
+                    return dto;
+                })
+                .filter(q -> q != null)
+                .collect(Collectors.toList());
     }
 }
