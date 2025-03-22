@@ -32,6 +32,9 @@ public class AssessmentService {
     @Autowired
     private AssessmentQuestionsRepository assessmentQuestionsRepository;
 
+    @Autowired
+    private ResponseOptionsRepository responseOptionsRepository;
+
     public ApiResponse<AssessmentResponseDTO> createOrUpdateAssessment(AssessmentDTO dto) {
         if (dto.getProductId() == null) {
             return ApiResponse.error(HttpStatus.BAD_REQUEST, "Missing required field: productId");
@@ -197,6 +200,10 @@ public class AssessmentService {
                             .orElse(null);
                     if (question == null) return null;
 
+                    ResponseOptions option = responseOptionsRepository
+                            .findById(response.getOptionId())
+                            .orElse(null);
+
                     AnsweredQuestionDTO dto = new AnsweredQuestionDTO();
                     dto.setQuestionCode(question.getCode());
                     dto.setEnQuestion(question.getEnQuestion());
@@ -206,6 +213,13 @@ public class AssessmentService {
                     dto.setOptionId(response.getOptionId());
                     dto.setCost(response.getCost());
                     dto.setIsGreen(response.getIsGreen());
+
+                    if (option != null) {
+                        dto.setEnOption(option.getEnOption());
+                        dto.setFrOption(option.getFrOption());
+                        dto.setKnOption(option.getKnOption());
+                    }
+
                     return dto;
                 })
                 .filter(q -> q != null)

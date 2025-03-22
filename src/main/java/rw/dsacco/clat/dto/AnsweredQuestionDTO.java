@@ -15,6 +15,9 @@ public class AnsweredQuestionDTO {
     private String knQuestion;
     private String description;
     private Long optionId;
+    private String enOption;
+    private String frOption;
+    private String knOption;
     private BigDecimal cost;
     private Boolean isGreen;
 }
